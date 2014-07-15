@@ -8,15 +8,15 @@ module.exports = function(coffeeBreak) {
 		mkdirp = require('mkdirp');
 
 	coffeeBreak.registerTask('codecoverage', function(conf, logger, done) {
-		// console.log('Run code coverage', conf);
+		console.log('Run code coverage', conf.files);
 
 		var files = conf.files,
-			tmpDir = path.join(__dirname, 'instrumented', conf.project);
+			tmpDir = path.join(conf.cwd, '~cb-tmp/instrumented');
 
-		// console.log('Code coverage out dir:', tmpDir);
+		console.log('Code coverage out dir:', tmpDir);
 
-		files.map(function(file) {
-			// console.log('File:', file);
+		files = files.map(function(file) {
+			console.log('File:', file);
 			var source = fs.readFileSync(conf.cwd + '/' + file, 'utf8');
 			var instrumenter = new Istanbul.Instrumenter(),
 				instrumented = instrumenter.instrumentSync(source, file);
@@ -24,14 +24,19 @@ module.exports = function(coffeeBreak) {
 			mkdirp.sync(path.dirname(tmpDir + '/' + file));
 			fs.writeFileSync(tmpDir + '/' + file, instrumented);
 
-			// console.log('Write instrumented file:', tmpDir + '/' + file);
+			console.log('Write instrumented file:', tmpDir + '/' + file);
+			return path.join('~cb-tmp/instrumented', file);
 		});
 
-		conf.cwdInstrumented = tmpDir;
+		conf.files = files;
 
-		// console.log('Conf after instrumentation', conf);
+		console.log('Conf after instrumentation', conf);
 
 		done();
+	});
+
+	coffeeBreak.registerTask('report', function(conf, logger, done) {
+
 	});
 
 	var generateReport = function(conf) {
