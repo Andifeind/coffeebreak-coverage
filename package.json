@@ -1,7 +1,7 @@
 {
   "name": "coffeebreak-coverage",
   "version": "0.0.1",
-  "description": "Codecoverage for CoffeeBreak",
+  "description": "Codecoverage plugin for CoffeeBreak",
   "main": "index.js",
   "scripts": {
     "test": "grunt test"
@@ -13,12 +13,12 @@
   "keywords": [
     "coffee-break",
     "coffeebreak",
+    "coffeebreak-plugin",
     "coverage",
-    "code",
-    "coverage",
+    "codecoverage",
     "istanbul"
   ],
-  "author": "Andi Heinkelein <andi@noname-media.com> (http://noname-media.com/)",
+  "author": "Andi Heinkelein <andi.oxidant@noname-media.com>",
   "license": "MIT",
   "dependencies": {
     "istanbul": "~0.3.0",
