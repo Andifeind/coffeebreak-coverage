@@ -1,67 +1,78 @@
 module.exports = function(coffeeBreak) {
-	"use strict";
+    "use strict";
 
-	var fs = require('fs'),
-		path = require('path');
+    var fs = require('fs'),
+        path = require('path');
 
-	var Istanbul = require('istanbul'),
-		mkdirp = require('mkdirp');
+    var Istanbul = require('istanbul'),
+        mkdirp = require('mkdirp');
 
-	coffeeBreak.registerTask('codecoverage', function(conf, logger, done) {
-		console.log('Run code coverage', conf.files);
+    var isCodeCoverageEnabled = false,
+        isReportWritten = false;
 
-		var files = conf.files,
-			tmpDir = path.join(conf.cwd, '~cb-tmp/instrumented');
+    coffeeBreak.registerTask('coverage', function(conf, logger, done) {
+        console.log('Run code coverage', conf.files);
 
-		console.log('Code coverage out dir:', tmpDir);
+        var files = conf.files,
+            tmpDir = path.join(conf.cwd, '~cb-tmp/instrumented');
 
-		files = files.map(function(file) {
-			console.log('File:', file);
-			var source = fs.readFileSync(conf.cwd + '/' + file, 'utf8');
-			var instrumenter = new Istanbul.Instrumenter(),
-				instrumented = instrumenter.instrumentSync(source, file);
+        console.log('Code coverage out dir:', tmpDir);
 
-			mkdirp.sync(path.dirname(tmpDir + '/' + file));
-			fs.writeFileSync(tmpDir + '/' + file, instrumented);
+        files = files.map(function(file) {
+            console.log('File:', file);
+            var source = fs.readFileSync(conf.cwd + '/' + file, 'utf8');
+            var instrumenter = new Istanbul.Instrumenter(),
+                instrumented = instrumenter.instrumentSync(source, file);
 
-			console.log('Write instrumented file:', tmpDir + '/' + file);
-			return path.join('~cb-tmp/instrumented', file);
-		});
+            mkdirp.sync(path.dirname(tmpDir + '/' + file));
+            fs.writeFileSync(tmpDir + '/' + file, instrumented);
 
-		conf.files = files;
+            console.log('Write instrumented file:', tmpDir + '/' + file);
+            return path.join('~cb-tmp/instrumented', file);
+        });
 
-		console.log('Conf after instrumentation', conf);
+        conf.files = files;
 
-		done();
-	});
+        console.log('Conf after instrumentation', conf);
 
-	coffeeBreak.registerTask('report', function(conf, logger, done) {
+        isCodeCoverageEnabled = true;
+        coffeeBreak.socket.once('cov-report', function(covObj) {
+            isReportWritten = true;
+            
+            var outDir = path.join(conf.tmpDir, 'coverage/html-cov');
 
-	});
+            var Report = Istanbul.Report,
+                report = Report.create('html', {
+                    dir: outDir
+                }),
+                collector = new Istanbul.Collector();
 
-	var generateReport = function(conf) {
-		var result = {"lib/lib1.js":{"path":"lib/lib1.js","s":{"1":1,"2":0},"b":{},"f":{"1":0},"fnMap":{"1":{"name":"(anonymous_1)","line":2,"loc":{"start":{"line":2,"column":7},"end":{"line":2,"column":18}}}},"statementMap":{"1":{"start":{"line":1,"column":0},"end":{"line":5,"column":2}},"2":{"start":{"line":3,"column":2},"end":{"line":3,"column":17}}},"branchMap":{}},"lib/lib2.js":{"path":"lib/lib2.js","s":{},"b":{},"f":{},"fnMap":{},"statementMap":{},"branchMap":{}},"lib/lib3.js":{"path":"lib/lib3.js","s":{},"b":{},"f":{},"fnMap":{},"statementMap":{},"branchMap":{}},"modulea.js":{"path":"modulea.js","s":{"1":1},"b":{},"f":{},"fnMap":{},"statementMap":{"1":{"start":{"line":1,"column":0},"end":{"line":1,"column":6}}},"branchMap":{}},"superModule.js":{"path":"superModule.js","s":{},"b":{},"f":{},"fnMap":{},"statementMap":{},"branchMap":{}}};
+            collector.add(covObj);
+            console.log('COV', outDir);
+            report.writeReport(collector, true);
+            logger.dev('Write coverage HTML report to', outDir);
 
-		var Store = Istanbul.Store,
-			store = Store.create('memory');
+            outDir = path.join(conf.tmpDir, 'coverage/json-cov');
+            report = Report.create('json', {
+                dir: outDir
+            });
 
-		for (var key in result) {
-			var source = fs.readFileSync(conf.cwd + '/' + key, 'utf8');
-			// console.log('Addsource of:', key, source);
-			store.set(key, source);
-		}
+            report.writeReport(collector, true);
+            logger.dev('Write coverage JSON report to', outDir);
+        });
 
-		store.dispose();
+        done();
+    });
 
-		var Report = require('istanbul').Report,
-			report = Report.create('html'),
-			collector = new Istanbul.Collector();
 
-		collector.add(result);
+    coffeeBreak.registerTask('report', function(conf, logger, done) {
+        if (isReportWritten) {
+            done();
+            return;
+        }
 
-		// console.log('Write result');
-		report.writeReport(collector,{
-			sourceStore: store
-		});
-	};
+        coffeeBreak.socket.once('end', function() {
+            done();
+        });
+    });
 };
